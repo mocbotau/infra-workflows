@@ -1,5 +1,9 @@
 name: CI
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 on:
   workflow_call:
     inputs:
@@ -26,6 +30,6 @@ jobs:
         env:
           INFISICAL_CLIENT_SECRET: ${{ secrets.ORG_INFISICAL_CLIENT_SECRET }}
         run: |
-          dagger call \
+          exec dagger call \
            --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
            ${{ inputs.dagger-command }}

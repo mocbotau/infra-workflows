@@ -1,5 +1,9 @@
 name: Deploy
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_call:
     inputs:
@@ -56,7 +60,7 @@ jobs:
         env:
           INFISICAL_CLIENT_SECRET: ${{ secrets.ORG_INFISICAL_CLIENT_SECRET }}
         run: |
-          dagger call \
+          exec dagger call \
            --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
            ${{ inputs.dagger-command }} \
            --env=${{ steps.set-environment.outputs.env }}
