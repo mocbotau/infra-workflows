@@ -1,4 +1,4 @@
-name: Build, push, and deploy
+name: Deploy
 
 on:
   workflow_call:
@@ -59,7 +59,7 @@ jobs:
           dagger call \
            --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
            ${{ inputs.dagger-command }} \
-           --environment=${{ steps.set-environment.outputs.env }}
+           --env=${{ steps.set-environment.outputs.env }}
 
   deploy:
     name: Deploy to Kubernetes
