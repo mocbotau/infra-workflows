@@ -1,0 +1,79 @@
+name: Build, push, and deploy
+
+on:
+  workflow_call:
+    inputs:
+      event-name:
+        type: string
+        description: "GitHub event name (pull_request/push/workflow_dispatch)"
+        required: false
+      environment:
+        type: string
+        description: "Environment to deploy to (staging/prod) - used with workflow_dispatch"
+        required: false
+      dagger-command:
+        type: string
+        description: "Dagger command to run for build"
+        default: "build-and-push"
+        required: false
+      runner:
+        type: string
+        description: "GitHub runner to use"
+        default: "ubuntu-dagger"
+        required: false
+
+jobs:
+  build:
+    name: Build and push to Docker Hub
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      environment: ${{ steps.set-environment.outputs.env }}
+      commit_sha: ${{ steps.extractor.outputs.short_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Determine Environment
+        id: set-environment
+        run: |
+          if [[ "${{ inputs.event-name }}" == "workflow_dispatch" ]]; then
+            echo "env=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.event-name }}" == "pull_request" ]]; then
+            echo "env=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.event-name }}" == "push" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+          else
+            # Default to staging if event-name not provided
+            echo "env=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract commit SHA
+        id: extractor
+        run: |
+          echo "${{ github.sha }}" | sed -E "s|^(.{7}).*$|short_sha=\1|" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        env:
+          INFISICAL_CLIENT_SECRET: ${{ secrets.ORG_INFISICAL_CLIENT_SECRET }}
+        run: |
+          dagger call \
+           --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
+           ${{ inputs.dagger-command }} \
+           --environment=${{ steps.set-environment.outputs.env }}
+
+  deploy:
+    name: Deploy to Kubernetes
+    needs: build
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Deploy to ${{ needs.build.outputs.environment }}
+        env:
+          CHARTMUSEUM_USER: ${{ secrets.ORG_CHARTMUSEUM_USER }}
+          CHARTMUSEUM_PASS: ${{ secrets.ORG_CHARTMUSEUM_PASS }}
+          COMMIT_SHA: ${{ needs.build.outputs.commit_sha }}
+        run: |
+          helmfile --environment ${{ needs.build.outputs.environment }} sync

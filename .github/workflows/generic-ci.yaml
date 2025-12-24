@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      dagger-command:
+        type: string
+        description: "Dagger command to run for CI"
+        default: "ci"
+        required: false
+      runner:
+        type: string
+        description: "GitHub runner to use"
+        default: "ubuntu-dagger"
+        required: false
+
+jobs:
+  ci:
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run Dagger CI Pipeline
+        env:
+          INFISICAL_CLIENT_SECRET: ${{ secrets.ORG_INFISICAL_CLIENT_SECRET }}
+        run: |
+          dagger call \
+           --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
+           ${{ inputs.dagger-command }}
