@@ -20,6 +20,10 @@ on:
         description: "Dagger command to run for build"
         default: "build-and-push"
         required: false
+      repo-name:
+        type: string
+        description: "Repository name"
+        required: true
       runner:
         type: string
         description: "GitHub runner to use"
@@ -62,6 +66,7 @@ jobs:
         run: |
           exec dagger call \
            --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
+           --repo-name=${{ inputs.repo-name }} \
            ${{ inputs.dagger-command }} \
            --env=${{ steps.set-environment.outputs.env }}
 
