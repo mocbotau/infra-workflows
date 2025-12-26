@@ -1,3 +1,8 @@
+Version 0.4.0
+
+- Support toggling staging for Helmfile diff
+- Add colour to deploy diff
+
 Version 0.3.0
 
 - Add Helmfile diff Helm chart

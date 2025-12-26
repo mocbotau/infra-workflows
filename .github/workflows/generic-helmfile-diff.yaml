@@ -3,11 +3,11 @@ name: Helmfile Diff
 on:
   workflow_call:
     inputs:
-      environment:
-        type: string
-        description: "Environment to diff against (staging/prod)"
+      run-staging:
+        type: boolean
+        description: "Run diff for staging environment (prod always runs)"
         required: false
-        default: "staging"
+        default: false
 
 jobs:
   helmfile-diff:
@@ -15,6 +15,9 @@ jobs:
     permissions:
       pull-requests: write
       contents: read
+    strategy:
+      matrix:
+        environment: ${{ inputs.run-staging && fromJSON('["staging", "prod"]') || fromJSON('["prod"]') }}
 
     steps:
       - name: Checkout code
@@ -33,7 +36,7 @@ jobs:
         run: |
           set +e
 
-          DIFF_OUTPUT=$(helmfile --environment ${{ inputs.environment }} \
+          DIFF_OUTPUT=$(helmfile --environment ${{ matrix.environment }} \
              diff --detailed-exitcode --suppress-secrets --no-color --suppress-output-line-regex version 2>&1)
           EXIT_CODE=$?
 
@@ -63,7 +66,7 @@ jobs:
             const diffOutput = fs.readFileSync('diff_output.txt', 'utf8');
             const status = '${{ steps.helmfile-diff.outputs.status }}';
 
-            let header = '## 🎯 Helmfile Diff (`${{ inputs.environment }}`)\n\n';
+            let header = '## 🎯 Helmfile Diff (`${{ matrix.environment }}`)\n\n';
 
             if (status === 'success') {
               header += '✅ No changes detected\n\n';
@@ -89,7 +92,7 @@ jobs:
 
             const botComment = comments.find(comment => 
               comment.user.type === 'Bot' && 
-              comment.body.includes('🎯 Helmfile Diff')
+              comment.body.includes('🎯 Helmfile Diff (`${{ matrix.environment }}`)')
             );
 
             if (botComment) {
