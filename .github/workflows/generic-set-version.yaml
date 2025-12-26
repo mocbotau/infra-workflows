@@ -14,7 +14,7 @@ on:
         required: false
 
 jobs:
-  deploy:
+  set-version:
     runs-on: ubuntu-dagger
 
     steps:
