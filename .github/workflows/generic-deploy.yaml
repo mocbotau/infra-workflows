@@ -66,8 +66,8 @@ jobs:
         run: |
           exec dagger call \
            --infisical-client-secret=env://INFISICAL_CLIENT_SECRET \
-           --repo-name=${{ inputs.repo-name }} \
            ${{ inputs.dagger-command }} \
+           --repo-name=${{ inputs.repo-name }} \
            --env=${{ steps.set-environment.outputs.env }}
 
   deploy:
