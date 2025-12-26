@@ -1,0 +1,22 @@
+name: Set Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force-bump:
+        type: choice
+        description: "Force version bump type (major, minor, patch)"
+        required: false
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  deploy:
+    uses: mocbotau/infra-workflows/.github/workflows/generic-set-version.yaml@main
+    secrets: inherit
+    with:
+      force-bump: ${{ github.event.inputs.force-bump }}
