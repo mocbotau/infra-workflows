@@ -1,3 +1,8 @@
+Version 0.3.0
+
+- Add Helmfile diff Helm chart
+- Change deploy command to use apply instead of sync to show diff when upgrading
+
 Version 0.2.0
 
 - Move repo name to be parameter to function rather than module

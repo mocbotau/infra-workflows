@@ -1,0 +1,109 @@
+name: Helmfile Diff
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: "Environment to diff against (staging/prod)"
+        required: false
+        default: "staging"
+
+jobs:
+  helmfile-diff:
+    runs-on: ubuntu-dagger
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Get short SHA
+        id: sha
+        run: echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Run Helmfile Diff
+        id: helmfile-diff
+        env:
+          CHARTMUSEUM_USER: ${{ secrets.ORG_CHARTMUSEUM_USER }}
+          CHARTMUSEUM_PASS: ${{ secrets.ORG_CHARTMUSEUM_PASS }}
+          COMMIT_SHA: ${{ steps.sha.outputs.SHORT_SHA }}
+        run: |
+          set +e
+
+          DIFF_OUTPUT=$(helmfile --environment ${{ inputs.environment }} \
+             diff --detailed-exitcode --suppress-secrets --no-color --suppress-output-line-regex version 2>&1)
+          EXIT_CODE=$?
+
+          echo "$DIFF_OUTPUT" > diff_output.txt
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          elif [ $EXIT_CODE -eq 2 ]; then
+            if echo "$DIFF_OUTPUT" \
+              | grep -qE '^[[:space:]]*[~+-][^~+-]'; then
+              echo "status=changes" >> $GITHUB_OUTPUT
+            else
+              echo "status=success" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "status=error" >> $GITHUB_OUTPUT
+          fi
+
+          exit 0
+
+      - name: Comment PR with Diff
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const diffOutput = fs.readFileSync('diff_output.txt', 'utf8');
+            const status = '${{ steps.helmfile-diff.outputs.status }}';
+
+            let header = '## 🎯 Helmfile Diff (`${{ inputs.environment }}`)\n\n';
+
+            if (status === 'success') {
+              header += '✅ No changes detected\n\n';
+            } else if (status === 'changes') {
+              header += '⚠️ Changes detected:\n\n';
+            } else {
+              header += '❌ Error running helmfile diff\n\n';
+            }
+
+            const maxLength = 60000;
+            let body = diffOutput;
+            if (body.length > maxLength) {
+              body = body.substring(0, maxLength) + '\n\n... (output truncated)';
+            }
+
+            const comment = header + '```diff\n' + body + '\n```';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🎯 Helmfile Diff')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }

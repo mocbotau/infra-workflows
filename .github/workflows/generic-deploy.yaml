@@ -85,4 +85,4 @@ jobs:
           CHARTMUSEUM_PASS: ${{ secrets.ORG_CHARTMUSEUM_PASS }}
           COMMIT_SHA: ${{ needs.build.outputs.commit_sha }}
         run: |
-          helmfile --environment ${{ needs.build.outputs.environment }} sync
+          helmfile --environment ${{ needs.build.outputs.environment }} apply --suppress-secrets
