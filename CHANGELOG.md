@@ -1,3 +1,7 @@
+Version 0.5.0
+
+- Add generic infra deploy workflow
+
 Version 0.4.0
 
 - Support toggling staging for Helmfile diff

@@ -1,0 +1,16 @@
+name: Infra Deploy
+
+on:
+  workflow_call:
+
+jobs:
+  deploy:
+    name: Infra Deploy
+    runs-on: ubuntu-dagger
+    steps:
+      - name: Checkout infrastructure config
+        uses: actions/checkout@v6
+
+      - name: Deploy with helmfile
+        run: |
+          helmfile apply --suppress-secrets
