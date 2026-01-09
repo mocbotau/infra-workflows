@@ -12,5 +12,8 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Deploy with helmfile
+        env:
+          CHARTMUSEUM_USER: ${{ secrets.ORG_CHARTMUSEUM_USER }}
+          CHARTMUSEUM_PASS: ${{ secrets.ORG_CHARTMUSEUM_PASS }}
         run: |
           helmfile apply --suppress-secrets

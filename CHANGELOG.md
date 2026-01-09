@@ -1,3 +1,7 @@
+Version 0.5.1
+
+- Include Chartmuseum username and password in generic infra deploy workflow env
+
 Version 0.5.0
 
 - Add generic infra deploy workflow
